@@ -82,15 +82,41 @@ Panel {
     saveSetting("pinnedY", y)
   }
 
-  function saveSetting(key, value) {
-    var registry = bar && bar.shell ? bar.shell.pluginRegistry : null
-    if (!registry) {
-      console.warn("omarchy-pets: cannot save " + key + ": plugin registry unavailable")
-      return
+  function currentSettings() {
+    return {
+      petId: String(root.setting("petId", "")),
+      petsDir: String(root.setting("petsDir", "~/.codex/pets")),
+      smooth: root.setting("smooth", true) === true,
+      pinned: root.setting("pinned", false) === true,
+      pinnedX: root.setting("pinnedX", -1),
+      pinnedY: root.setting("pinnedY", -1),
+      randomBehavior: root.setting("randomBehavior", true) === true,
+      animate: root.setting("animate", true) === true
     }
-    var error = registry.setBarWidget(moduleName, key, value, {})
-    if (error) console.warn("omarchy-pets: saving " + key + " failed: " + error)
-    else console.log("omarchy-pets: " + key + " = " + JSON.stringify(value))
+  }
+
+  function saveSetting(key, value) {
+    var shellApi = bar && bar.shell ? bar.shell : null
+    if (shellApi && shellApi.pluginRegistry && typeof shellApi.pluginRegistry.setBarWidget === "function") {
+      var error = shellApi.pluginRegistry.setBarWidget(moduleName, key, value, {})
+      if (!error) {
+        console.log("omarchy-pets: " + key + " = " + JSON.stringify(value))
+        return
+      }
+      console.warn("omarchy-pets: saving " + key + " via registry failed: " + error)
+    }
+    // Bar widgets only get the scoped shell facade, which has no
+    // pluginRegistry. updateEntryInline is the supported write path here;
+    // it replaces the layout entry, so send the full merged settings.
+    if (shellApi && typeof shellApi.updateEntryInline === "function") {
+      var merged = currentSettings()
+      merged[key] = value
+      if (shellApi.updateEntryInline(moduleName, merged)) {
+        console.log("omarchy-pets: " + key + " = " + JSON.stringify(value))
+        return
+      }
+    }
+    console.warn("omarchy-pets: cannot save " + key + ": no writable shell API")
   }
 
   function switchPanel(direction) {
