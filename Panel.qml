@@ -26,6 +26,10 @@ Panel {
   readonly property bool pinned: root.setting("pinned", false) === true
   readonly property int pinnedX: root.setting("pinnedX", -1)
   readonly property int pinnedY: root.setting("pinnedY", -1)
+  readonly property real pinnedScale: {
+    var s = Number(root.setting("pinnedScale", 1))
+    return s > 0 ? s : 1
+  }
   property int dragDx: 0
   property int dragDy: 0
   readonly property int previewCount: 3
@@ -90,6 +94,7 @@ Panel {
       pinned: root.setting("pinned", false) === true,
       pinnedX: root.setting("pinnedX", -1),
       pinnedY: root.setting("pinnedY", -1),
+      pinnedScale: root.pinnedScale,
       randomBehavior: root.setting("randomBehavior", true) === true,
       animate: root.setting("animate", true) === true
     }
@@ -137,13 +142,14 @@ Panel {
     parent: root.pinned ? pinnedSlot : panelSlot
     x: root.pinned ? root.petX : 0
     y: root.pinned ? root.petY : 0
-    width: 192
-    height: 208
+    width: root.pinned ? Math.round(192 * root.pinnedScale) : 192
+    height: root.pinned ? Math.round(208 * root.pinnedScale) : 208
 
     PetSprite {
       anchors.fill: parent
       sheetUrl: root.currentPet ? root.currentPet.sheetUrl : ""
       smoothScaling: root.smoothScaling
+      cellScale: root.pinned ? root.pinnedScale : 1
       running: (root.opened || root.pinned) && root.animate && root.currentPet !== null
       randomBehavior: root.randomBehavior
       onDragged: function(dx, dy) { root.dragPet(dx, dy) }
@@ -315,6 +321,35 @@ Panel {
           foreground: root.barForeground
           fontFamily: root.fontFamily
           onClicked: root.saveSetting("animate", !root.animate)
+        }
+
+        Column {
+          width: parent.width
+          spacing: Style.spacing.labelGap
+
+          Text {
+            text: "Pinned size — " + Math.round(root.pinnedScale * 100) + "%"
+            color: root.barForeground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+          }
+
+          Text {
+            text: "Scale of the pet while pinned to the desktop"
+            color: Qt.darker(root.barForeground, 1.5)
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          PanelSlider {
+            width: parent.width
+            bar: root.bar
+            value: root.pinnedScale
+            minimum: 0.5
+            maximum: 3
+            step: 0.25
+            onReleased: function(v) { root.saveSetting("pinnedScale", Math.round(v * 100) / 100) }
+          }
         }
       }
     }

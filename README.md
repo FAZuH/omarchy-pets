@@ -56,6 +56,7 @@ omarchy bar set raiden-meixelysia.omarchy-pets smooth false --json
 | `pinned` | bool | `false` | Keep the pet on the desktop |
 | `pinnedX` | int | `-1` | Left edge of the pinned pet in screen pixels; `-1` is below the bar icon. Dragging sets it |
 | `pinnedY` | int | `-1` | Top edge of the pinned pet; same rules |
+| `pinnedScale` | number | `1` | Scale of the pet while pinned (0.5–3); bar icon and panel preview stay full size |
 | `randomBehavior` | bool | `true` | Play a random move every 8–20 s |
 | `animate` | bool | `true` | Off shows one still frame and runs no timer |
 

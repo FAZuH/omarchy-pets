@@ -9,6 +9,7 @@ Item {
   property bool smoothScaling: true
   property bool running: false
   property bool randomBehavior: true
+  property real cellScale: 1
   property string pose: "idle"
   property int frame: 0
   property int waitMs: 0
@@ -29,6 +30,8 @@ Item {
   readonly property var durations: Sprite.POSES[pose].durations
   readonly property var cell: looking ? look
     : (neutralBeat ? { row: 0, frame: Sprite.NEUTRAL_FRAME } : { row: Sprite.POSES[pose].row, frame: frame })
+  readonly property real cellW: 192 * cellScale
+  readonly property real cellH: 208 * cellScale
   property url loggedSheet
 
   signal dragged(real dx, real dy)
@@ -141,8 +144,10 @@ Item {
   Image {
     id: sheet
     source: root.sheetUrl
-    x: -root.cell.frame * 192
-    y: -root.cell.row * 208
+    width: sourceSize.width * root.cellScale
+    height: sourceSize.height * root.cellScale
+    x: -root.cell.frame * root.cellW
+    y: -root.cell.row * root.cellH
     smooth: root.smoothScaling
     asynchronous: true
     onStatusChanged: {

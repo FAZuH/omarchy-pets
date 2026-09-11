@@ -23,6 +23,7 @@
       "pinned": false,
       "pinnedX": -1,
       "pinnedY": -1,
+      "pinnedScale": 1,
       "randomBehavior": true,
       "animate": true
     },
@@ -74,6 +75,16 @@
         "max": 16384,
         "step": 1,
         "defaultValue": -1
+      },
+      {
+        "key": "pinnedScale",
+        "type": "number",
+        "label": "Pinned size",
+        "description": "Scale of the pet while pinned to the desktop. 1 is full size; the bar icon and panel preview stay full size.",
+        "min": 0.5,
+        "max": 3,
+        "step": 0.25,
+        "defaultValue": 1
       },
       {
         "key": "randomBehavior",
