@@ -62,6 +62,43 @@ TestCase {
     verify(Sprite.drawWaitMs(0.5) >= 8000 && Sprite.drawWaitMs(0.5) <= 20000)
   }
 
+  function test_walk_dwell_range() {
+    compare(Sprite.walkDwellMs(0), 2000)
+    compare(Sprite.walkDwellMs(0.999999), 5000)
+    verify(Sprite.walkDwellMs(0.5) >= 2000 && Sprite.walkDwellMs(0.5) <= 5000)
+  }
+
+  function test_random_ring_point() {
+    var p = Sprite.randomRingPoint(0, 0.77, 30, 100)
+    verify(Math.abs(Math.hypot(p.x, p.y) - 30) < 1e-9, "inner " + Math.hypot(p.x, p.y))
+    p = Sprite.randomRingPoint(1, 0.25, 30, 100)
+    verify(Math.abs(p.x) < 1e-9, "x " + p.x)
+    verify(Math.abs(p.y - 100) < 1e-9, "y " + p.y)
+    p = Sprite.randomRingPoint(0, 0, 0, 100)
+    compare(p.x, 0)
+    compare(p.y, 0)
+    for (var i = 0; i < 200; i++) {
+      p = Sprite.randomRingPoint(Math.random(), Math.random(), 20, 80)
+      var r = Math.hypot(p.x, p.y)
+      verify(r >= 20 - 1e-9 && r <= 80, "r " + r)
+    }
+  }
+
+  function test_walk_toward() {
+    var p = Sprite.walkToward(0, 0, 100, 0, 40)
+    compare(p.x, 40)
+    compare(p.y, 0)
+    compare(p.arrived, false)
+    p = Sprite.walkToward(80, 0, 100, 0, 40)
+    compare(p.x, 100)
+    compare(p.arrived, true)
+    p = Sprite.walkToward(100, 100, 100, 100, 40)
+    compare(p.arrived, true)
+    p = Sprite.walkToward(0, 0, 3, 4, 2.5)
+    verify(Math.abs(Math.hypot(p.x, p.y) - 2.5) < 1e-9, "diag " + Math.hypot(p.x, p.y))
+    compare(p.arrived, false)
+  }
+
   function test_look_wheel_cardinals() {
     compare(Sprite.lookCell(0, -1), { row: 9, frame: 0 })
     compare(Sprite.lookCell(1, 0), { row: 9, frame: 4 })

@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "raiden-meixelysia.omarchy-pets",
   "name": "Omarchy Pets",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Raiden-MeixElysia",
   "license": "MIT",
-  "description": "An animated Codex Pets companion in the bar: it plays its own moves on a random schedule, looks at your cursor, and can be pinned to the desktop.",
+  "description": "An animated Codex Pets companion in the bar: it plays its own moves on a random schedule, looks at your cursor, can be pinned to the desktop, and strolls around where you drop it.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "BarWidget.qml"
@@ -25,7 +25,10 @@
       "pinnedY": -1,
       "pinnedScale": 1,
       "randomBehavior": true,
-      "animate": true
+      "animate": true,
+      "walk": false,
+      "walkRadius": 0,
+      "walkMin": 0
     },
     "schema": [
       {
@@ -99,6 +102,33 @@
         "label": "Animate",
         "description": "Off shows a single still frame and runs no timer.",
         "defaultValue": true
+      },
+      {
+        "key": "walk",
+        "type": "boolean",
+        "label": "Walk around",
+        "description": "The pinned pet strolls around the spot you dropped it. Turning it on with a zero radius sets a 150 px radius.",
+        "defaultValue": false
+      },
+      {
+        "key": "walkRadius",
+        "type": "integer",
+        "label": "Walk radius",
+        "description": "Distance in pixels the pinned pet strolls around the spot you dropped it. 0 keeps it in place.",
+        "min": 0,
+        "max": 500,
+        "step": 25,
+        "defaultValue": 0
+      },
+      {
+        "key": "walkMin",
+        "type": "integer",
+        "label": "Minimum stride",
+        "description": "Shortest distance in pixels of one stroll, so the pet does not just shuffle a few pixels. Never above the walk radius.",
+        "min": 0,
+        "max": 500,
+        "step": 25,
+        "defaultValue": 0
       }
     ]
   }

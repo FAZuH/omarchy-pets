@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
+import "Sprite.js" as Sprite
 
 Panel {
   id: root
@@ -30,8 +31,20 @@ Panel {
     var s = Number(root.setting("pinnedScale", 1))
     return s > 0 ? s : 1
   }
+  readonly property int walkRadius: Math.max(0, Number(root.setting("walkRadius", 0)) || 0)
+  readonly property int walkMin: Math.min(walkRadius, Math.max(0, Number(root.setting("walkMin", 0)) || 0))
+  readonly property bool walk: root.setting("walk", false) === true
   property int dragDx: 0
   property int dragDy: 0
+  readonly property bool dragging: dragDx !== 0 || dragDy !== 0
+
+  // Stroll: offsets from the pinned spot, the target, and rest time between strolls.
+  property bool walkMoving: false
+  property real walkDx: 0
+  property real walkDy: 0
+  property real walkTx: 0
+  property real walkTy: 0
+  property real walkDwell: 0
   readonly property int previewCount: 3
   property bool showAll: false
   readonly property var currentPet: {
@@ -51,14 +64,26 @@ Panel {
   // Pinned position: saved or card spot, plus drag, clamped.
   readonly property int restX: pinnedX >= 0 ? pinnedX : stageScreenX
   readonly property int restY: pinnedY >= 0 ? pinnedY : stageScreenY
-  readonly property int petX: Math.max(0, Math.min(restX + dragDx, pinnedWindow.width - stage.width))
-  readonly property int petY: Math.max(0, Math.min(restY + dragDy, pinnedWindow.height - stage.height))
+  readonly property int petX: Math.max(0, Math.min(restX + dragDx + Math.round(walkDx), pinnedWindow.width - stage.width))
+  readonly property int petY: Math.max(0, Math.min(restY + dragDy + Math.round(walkDy), pinnedWindow.height - stage.height))
 
   onOpenedChanged: {
     if (opened) library.rescan()
     else showAll = false
   }
-  onPinnedChanged: if (pinned) root.controller.hide()
+  onPinnedChanged: {
+    if (pinned) root.controller.hide()
+    else {
+      walkMoving = false
+      walkDx = 0
+      walkDy = 0
+    }
+  }
+  onWalkChanged: if (!walk) {
+    walkMoving = false
+    walkDx = 0
+    walkDy = 0
+  }
 
   function open() {
     if (pinned) saveSetting("pinned", false)
@@ -82,6 +107,10 @@ Panel {
     var y = petY
     dragDx = 0
     dragDy = 0
+    walkMoving = false
+    walkDx = 0
+    walkDy = 0
+    walkDwell = Sprite.walkDwellMs(Math.random())
     saveSetting("pinnedX", x)
     saveSetting("pinnedY", y)
   }
@@ -96,7 +125,10 @@ Panel {
       pinnedY: root.setting("pinnedY", -1),
       pinnedScale: root.pinnedScale,
       randomBehavior: root.setting("randomBehavior", true) === true,
-      animate: root.setting("animate", true) === true
+      animate: root.setting("animate", true) === true,
+      walk: root.setting("walk", false) === true,
+      walkRadius: root.setting("walkRadius", 0),
+      walkMin: root.setting("walkMin", 0)
     }
   }
 
@@ -146,14 +178,52 @@ Panel {
     height: root.pinned ? Math.round(208 * root.pinnedScale) : 208
 
     PetSprite {
+      id: sprite
       anchors.fill: parent
       sheetUrl: root.currentPet ? root.currentPet.sheetUrl : ""
       smoothScaling: root.smoothScaling
       cellScale: root.pinned ? root.pinnedScale : 1
       running: (root.opened || root.pinned) && root.animate && root.currentPet !== null
       randomBehavior: root.randomBehavior
+      walking: root.walk && root.walkMoving && root.walkRadius > 0 && !sprite.hovering && !root.dragging
       onDragged: function(dx, dy) { root.dragPet(dx, dy) }
       onDropped: root.dropPet()
+    }
+
+    Timer {
+      id: walker
+      interval: 33
+      repeat: true
+      running: root.pinned && root.animate && root.walk && root.walkRadius > 0 && root.currentPet !== null
+
+      onRunningChanged: {
+        if (!running) return
+        walkMoving = false
+        walkDwell = Sprite.walkDwellMs(Math.random())
+      }
+
+      onTriggered: {
+        if (sprite.hovering || root.dragging) return
+        if (pinnedWindow.width < stage.width || pinnedWindow.height < stage.height) return
+        if (!walkMoving) {
+          walkDwell -= interval
+          if (walkDwell > 0) return
+          var point = Sprite.randomRingPoint(Math.random(), Math.random(), root.walkMin, root.walkRadius)
+          walkTx = Math.max(0, Math.min(restX + point.x, pinnedWindow.width - stage.width)) - restX
+          walkTy = Math.max(0, Math.min(restY + point.y, pinnedWindow.height - stage.height)) - restY
+          walkMoving = true
+        }
+        var oldX = walkDx
+        var pos = Sprite.walkToward(walkDx, walkDy, walkTx, walkTy, Sprite.WALK_SPEED * interval / 1000)
+        walkDx = pos.x
+        walkDy = pos.y
+        if (pos.x > oldX + 0.01) sprite.facing = 1
+        else if (pos.x < oldX - 0.01) sprite.facing = -1
+        if (pos.arrived) {
+          walkMoving = false
+          walkDwell = Sprite.walkDwellMs(Math.random())
+        }
+      }
     }
 
     PanelActionButton {
@@ -212,10 +282,21 @@ Panel {
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
-      Column {
-        id: content
-        width: parent.width
-        spacing: Style.space(10)
+      Flickable {
+        id: scroll
+        anchors.fill: parent
+        contentWidth: width
+        contentHeight: content.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: contentHeight > height
+
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+        Column {
+          id: content
+          width: parent.width
+          spacing: Style.space(10)
 
         Item {
           id: panelSlot
@@ -323,6 +404,19 @@ Panel {
           onClicked: root.saveSetting("animate", !root.animate)
         }
 
+        Toggle {
+          width: parent.width
+          label: "Walk around"
+          description: "The pinned pet strolls around the spot you dropped it"
+          checked: root.walk
+          foreground: root.barForeground
+          fontFamily: root.fontFamily
+          onClicked: {
+            if (!root.walk && root.walkRadius === 0) root.saveSetting("walkRadius", 150)
+            root.saveSetting("walk", !root.walk)
+          }
+        }
+
         Column {
           width: parent.width
           spacing: Style.spacing.labelGap
@@ -350,6 +444,60 @@ Panel {
             step: 0.25
             onReleased: function(v) { root.saveSetting("pinnedScale", Math.round(v * 100) / 100) }
           }
+        }
+
+        Column {
+          width: parent.width
+          spacing: Style.spacing.labelGap
+
+          Text {
+            text: root.walkRadius > 0 ? "Walk radius — " + root.walkRadius + " px" : "Walk radius — off"
+            color: root.barForeground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+          }
+
+          Text {
+            text: "Distance the pinned pet strolls around the spot you dropped it"
+            color: Qt.darker(root.barForeground, 1.5)
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          PanelSlider {
+            width: parent.width
+            bar: root.bar
+            value: root.walkRadius
+            minimum: 0
+            maximum: 500
+            step: 25
+            onReleased: function(v) { root.saveSetting("walkRadius", Math.round(v)) }
+          }
+
+          Text {
+            text: "Minimum stride — " + root.walkMin + " px"
+            color: root.barForeground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+          }
+
+          Text {
+            text: "Shortest distance of one stroll, so the pet does not just shuffle. Capped by the radius"
+            color: Qt.darker(root.barForeground, 1.5)
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          PanelSlider {
+            width: parent.width
+            bar: root.bar
+            value: root.walkMin
+            minimum: 0
+            maximum: 500
+            step: 25
+            onReleased: function(v) { root.saveSetting("walkMin", Math.round(v)) }
+          }
+        }
         }
       }
     }

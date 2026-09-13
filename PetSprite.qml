@@ -18,6 +18,8 @@ Item {
   property bool hovering: false
   property var look: ({ row: 0, frame: 0 })
   property bool neutralBeat: false
+  property bool walking: false
+  property int facing: 1
   property real pressX: 0
   property real pressY: 0
   property bool dragMoved: false
@@ -107,7 +109,13 @@ Item {
     }
     var elapsed = clock.interval
     frame = (frame + 1) % durations.length
-    if (pose !== "idle") {
+    if (walking) {
+      // Hold the running animation until the walker stops us; never idle.
+      if (pose !== "running") {
+        pose = "running"
+        frame = 0
+      }
+    } else if (pose !== "idle") {
       if (frame === 0 && --loopsLeft === 0) beginIdle()
     } else {
       waitMs -= elapsed
@@ -116,7 +124,19 @@ Item {
     if (ticking) arm()
   }
 
-  onRunningChanged: {
+  onWalkingChanged: {
+    if (!running) return
+    if (walking) {
+      frame = 0
+      neutralBeat = false
+      pose = "running"
+      if (ticking) arm()
+    } else {
+      facing = 1
+      beginIdle()
+      if (ticking) arm()
+    }
+  }  onRunningChanged: {
     console.log("omarchy-pets: animation " + (running ? "started" : "stopped"))
     if (running) beginIdle()
     else {
@@ -148,6 +168,10 @@ Item {
     height: sourceSize.height * root.cellScale
     x: -root.cell.frame * root.cellW
     y: -root.cell.row * root.cellH
+    transform: Scale {
+      xScale: root.facing
+      origin.x: (root.cell.frame + 0.5) * root.cellW
+    }
     smooth: root.smoothScaling
     asynchronous: true
     onStatusChanged: {

@@ -13,6 +13,30 @@ var POSES = {
 var ACTIONS = ["waving", "jumping", "waiting", "running"]
 var ACTION_LOOPS = 2
 
+// Stroll speed while walking, px per second.
+var WALK_SPEED = 60
+
+// Rest between strolls, ms.
+function walkDwellMs(random) {
+  return 2000 + Math.floor(random * 3001)
+}
+
+// Uniform point in a ring between minR and maxR, minR 0 gives a disc (u1, u2 in [0, 1)).
+function randomRingPoint(u1, u2, minR, maxR) {
+  var angle = u2 * 2 * Math.PI
+  var r = Math.sqrt(u1 * (maxR * maxR - minR * minR) + minR * minR)
+  return { x: r * Math.cos(angle), y: r * Math.sin(angle) }
+}
+
+// One step of at most `step` px from (x, y) toward (tx, ty); arrived snaps onto it.
+function walkToward(x, y, tx, ty, step) {
+  var dx = tx - x
+  var dy = ty - y
+  var d = Math.sqrt(dx * dx + dy * dy)
+  if (d === 0 || d <= step) return { x: tx, y: ty, arrived: true }
+  return { x: x + dx / d * step, y: y + dy / d * step, arrived: false }
+}
+
 function pickAction(previous, random) {
   var pool = ACTIONS.filter(function(name) { return name !== previous })
   return pool[Math.floor(random * pool.length)]

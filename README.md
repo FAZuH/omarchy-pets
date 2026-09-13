@@ -38,6 +38,10 @@ The bar shows the current pet's first frame; with no pets it shows a paw.
   panel closed. It never takes keyboard focus and only the pet itself is
   clickable. Drag the pinned pet to put it anywhere on the screen; the spot is
   remembered. Click the bar icon to unpin.
+- Give the pinned pet a walk radius in the panel and it strolls to random
+  spots within that distance of its spot, running pose on, facing the way it
+  walks. It rests a few seconds between strolls, and hovering it pauses the
+  walk so it can look at your cursor.
 
 ## Settings
 
@@ -59,6 +63,9 @@ omarchy bar set raiden-meixelysia.omarchy-pets smooth false --json
 | `pinnedScale` | number | `1` | Scale of the pet while pinned (0.5–3); bar icon and panel preview stay full size |
 | `randomBehavior` | bool | `true` | Play a random move every 8–20 s |
 | `animate` | bool | `true` | Off shows one still frame and runs no timer |
+| `walk` | bool | `false` | Stroll on/off; switching it on with radius 0 sets a 150 px radius |
+| `walkRadius` | int | `0` | Pixels the pinned pet strolls around its spot; `0` keeps it in place |
+| `walkMin` | int | `0` | Shortest distance of one stroll; never above `walkRadius` |
 
 ## What it touches
 
