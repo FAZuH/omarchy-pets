@@ -2,11 +2,13 @@
 
 // Row and frame durations (ms) per pose.
 var POSES = {
-  idle:    { row: 0, durations: [280, 110, 110, 140, 140, 320] },
-  waving:  { row: 3, durations: [140, 140, 140, 280] },
-  jumping: { row: 4, durations: [140, 140, 140, 140, 280] },
-  waiting: { row: 6, durations: [150, 150, 150, 150, 150, 260] },
-  running: { row: 7, durations: [120, 120, 120, 120, 120, 220] }
+  idle:     { row: 0, durations: [280, 110, 110, 140, 140, 320] },
+  runRight: { row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220] },
+  runLeft:  { row: 2, durations: [120, 120, 120, 120, 120, 120, 120, 220] },
+  waving:   { row: 3, durations: [140, 140, 140, 280] },
+  jumping:  { row: 4, durations: [140, 140, 140, 140, 280] },
+  waiting:  { row: 6, durations: [150, 150, 150, 150, 150, 260] },
+  running:  { row: 7, durations: [120, 120, 120, 120, 120, 220] }
 }
 
 // Random behaviour pool, played ACTION_LOOPS times.
@@ -19,6 +21,13 @@ var WALK_SPEED = 60
 // Rest between strolls, ms.
 function walkDwellMs(random) {
   return 2000 + Math.floor(random * 3001)
+}
+
+// Wait-time multiplier for a 0-100 randomness setting: 50 = natural pace,
+// 0 = half as often, 100 = five times as often.
+function randomnessFactor(percent) {
+  var p = Math.max(0, Math.min(100, percent))
+  return p <= 50 ? 2 - p / 50 : (100 - p) / 62.5 + 0.2
 }
 
 // Uniform point in a ring between minR and maxR, minR 0 gives a disc (u1, u2 in [0, 1)).

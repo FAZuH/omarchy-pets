@@ -34,6 +34,7 @@ Panel {
   readonly property int walkRadius: Math.max(0, Number(root.setting("walkRadius", 0)) || 0)
   readonly property int walkMin: Math.min(walkRadius, Math.max(0, Number(root.setting("walkMin", 0)) || 0))
   readonly property bool walk: root.setting("walk", false) === true
+  readonly property int randomness: Math.max(0, Math.min(100, Math.round(Number(root.setting("randomness", 50)))))
   property int dragDx: 0
   property int dragDy: 0
   readonly property bool dragging: dragDx !== 0 || dragDy !== 0
@@ -110,7 +111,7 @@ Panel {
     walkMoving = false
     walkDx = 0
     walkDy = 0
-    walkDwell = Sprite.walkDwellMs(Math.random())
+    walkDwell = Sprite.walkDwellMs(Math.random()) * Sprite.randomnessFactor(root.randomness)
     saveSetting("pinnedX", x)
     saveSetting("pinnedY", y)
   }
@@ -128,7 +129,8 @@ Panel {
       animate: root.setting("animate", true) === true,
       walk: root.setting("walk", false) === true,
       walkRadius: root.setting("walkRadius", 0),
-      walkMin: root.setting("walkMin", 0)
+      walkMin: root.setting("walkMin", 0),
+      randomness: root.setting("randomness", 50)
     }
   }
 
@@ -185,6 +187,7 @@ Panel {
       cellScale: root.pinned ? root.pinnedScale : 1
       running: (root.opened || root.pinned) && root.animate && root.currentPet !== null
       randomBehavior: root.randomBehavior
+      randomness: root.randomness
       walking: root.walk && root.walkMoving && root.walkRadius > 0 && !sprite.hovering && !root.dragging
       onDragged: function(dx, dy) { root.dragPet(dx, dy) }
       onDropped: root.dropPet()
@@ -199,7 +202,7 @@ Panel {
       onRunningChanged: {
         if (!running) return
         walkMoving = false
-        walkDwell = Sprite.walkDwellMs(Math.random())
+        walkDwell = Sprite.walkDwellMs(Math.random()) * Sprite.randomnessFactor(root.randomness)
       }
 
       onTriggered: {
@@ -221,7 +224,7 @@ Panel {
         else if (pos.x < oldX - 0.01) sprite.facing = -1
         if (pos.arrived) {
           walkMoving = false
-          walkDwell = Sprite.walkDwellMs(Math.random())
+          walkDwell = Sprite.walkDwellMs(Math.random()) * Sprite.randomnessFactor(root.randomness)
         }
       }
     }
@@ -387,7 +390,7 @@ Panel {
         Toggle {
           width: parent.width
           label: "Random behaviour"
-          description: "A move of its own every 8-20 seconds"
+          description: "A move of its own at random intervals, paced by Randomness below"
           checked: root.randomBehavior
           foreground: root.barForeground
           fontFamily: root.fontFamily
@@ -422,6 +425,7 @@ Panel {
           spacing: Style.spacing.labelGap
 
           Text {
+            width: parent.width
             text: "Pinned size — " + Math.round(root.pinnedScale * 100) + "%"
             color: root.barForeground
             font.family: root.fontFamily
@@ -429,6 +433,8 @@ Panel {
           }
 
           Text {
+            width: parent.width
+            wrapMode: Text.Wrap
             text: "Scale of the pet while pinned to the desktop"
             color: Qt.darker(root.barForeground, 1.5)
             font.family: root.fontFamily
@@ -449,8 +455,11 @@ Panel {
         Column {
           width: parent.width
           spacing: Style.spacing.labelGap
+          enabled: root.walk
+          opacity: root.walk ? 1 : 0.4
 
           Text {
+            width: parent.width
             text: root.walkRadius > 0 ? "Walk radius — " + root.walkRadius + " px" : "Walk radius — off"
             color: root.barForeground
             font.family: root.fontFamily
@@ -458,6 +467,8 @@ Panel {
           }
 
           Text {
+            width: parent.width
+            wrapMode: Text.Wrap
             text: "Distance the pinned pet strolls around the spot you dropped it"
             color: Qt.darker(root.barForeground, 1.5)
             font.family: root.fontFamily
@@ -475,6 +486,7 @@ Panel {
           }
 
           Text {
+            width: parent.width
             text: "Minimum stride — " + root.walkMin + " px"
             color: root.barForeground
             font.family: root.fontFamily
@@ -482,6 +494,8 @@ Panel {
           }
 
           Text {
+            width: parent.width
+            wrapMode: Text.Wrap
             text: "Shortest distance of one stroll, so the pet does not just shuffle. Capped by the radius"
             color: Qt.darker(root.barForeground, 1.5)
             font.family: root.fontFamily
@@ -496,6 +510,38 @@ Panel {
             maximum: 500
             step: 25
             onReleased: function(v) { root.saveSetting("walkMin", Math.round(v)) }
+          }
+        }
+
+        Column {
+          width: parent.width
+          spacing: Style.spacing.labelGap
+
+          Text {
+            width: parent.width
+            text: "Randomness — " + root.randomness + "%"
+            color: root.barForeground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+          }
+
+          Text {
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: "How often the pet moves on its own, idle actions and strolls alike"
+            color: Qt.darker(root.barForeground, 1.5)
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          PanelSlider {
+            width: parent.width
+            bar: root.bar
+            value: root.randomness
+            minimum: 0
+            maximum: 100
+            step: 5
+            onReleased: function(v) { root.saveSetting("randomness", Math.round(v)) }
           }
         }
         }

@@ -15,6 +15,8 @@ TestCase {
     sprite.hovering = false
     sprite.randomBehavior = true
     sprite.walking = false
+    sprite.facing = 1
+    sprite.randomness = 50
     dragSpy.clear()
     dropSpy.clear()
   }
@@ -287,22 +289,43 @@ TestCase {
     compare(sprite.pose, "idle")
   }
 
-  function test_walking_holds_running_pose_until_stopped() {
+  function test_walking_holds_run_pose_until_stopped() {
     loadAtlas("atlas-v2.png")
     sprite.running = true
     sprite.walking = true
-    compare(sprite.pose, "running")
+    compare(sprite.pose, "runRight")
     compare(sprite.frame, 0)
     var loops = 0
     function countLoop() { if (sprite.frame === 0) loops++ }
     sprite.frameChanged.connect(countLoop)
     tryVerify(function() { return loops >= 2 }, 3000)
     sprite.frameChanged.disconnect(countLoop)
-    compare(sprite.pose, "running")
+    compare(sprite.pose, "runRight")
     sprite.walking = false
     compare(sprite.pose, "idle")
     compare(sprite.frame, 0)
     verify(sprite.waitMs >= 8000 && sprite.waitMs <= 20000, "wait " + sprite.waitMs)
+    sprite.running = false
+  }
+
+  function test_walking_left_uses_run_left() {
+    sprite.running = true
+    sprite.facing = -1
+    sprite.walking = true
+    compare(sprite.pose, "runLeft")
+    sprite.walking = false
+    sprite.running = false
+  }
+
+  function test_facing_change_switches_run_pose_mid_walk() {
+    sprite.running = true
+    sprite.walking = true
+    compare(sprite.pose, "runRight")
+    sprite.facing = -1
+    compare(sprite.pose, "runLeft")
+    sprite.facing = 1
+    compare(sprite.pose, "runRight")
+    sprite.walking = false
     sprite.running = false
   }
 
@@ -311,7 +334,7 @@ TestCase {
     sprite.walking = true
     sprite.waitMs = 1
     wait(1500)
-    compare(sprite.pose, "running")
+    compare(sprite.pose, "runRight")
     sprite.walking = false
     compare(sprite.pose, "idle")
     sprite.running = false
@@ -320,7 +343,7 @@ TestCase {
   function test_walking_survives_running_restart() {
     sprite.walking = true
     sprite.running = true
-    tryCompare(sprite, "pose", "running", 1000)
+    tryCompare(sprite, "pose", "runRight", 1000)
     sprite.running = false
     sprite.walking = false
   }
@@ -332,6 +355,13 @@ TestCase {
     compare(sprite.facing, -1)
     sprite.walking = false
     compare(sprite.facing, 1)
+    sprite.running = false
+  }
+
+  function test_randomness_scales_idle_wait() {
+    sprite.randomness = 100
+    sprite.running = true
+    verify(sprite.waitMs >= 1600 && sprite.waitMs <= 4000, "wait " + sprite.waitMs)
     sprite.running = false
   }
 }

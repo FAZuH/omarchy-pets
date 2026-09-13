@@ -68,6 +68,16 @@ TestCase {
     verify(Sprite.walkDwellMs(0.5) >= 2000 && Sprite.walkDwellMs(0.5) <= 5000)
   }
 
+  function test_randomness_factor() {
+    compare(Sprite.randomnessFactor(50), 1)
+    compare(Sprite.randomnessFactor(0), 2)
+    compare(Sprite.randomnessFactor(100), 0.2)
+    compare(Sprite.randomnessFactor(-10), 2)
+    compare(Sprite.randomnessFactor(110), 0.2)
+    verify(Sprite.randomnessFactor(25) > 1 && Sprite.randomnessFactor(25) < 2)
+    verify(Sprite.randomnessFactor(75) > 0.2 && Sprite.randomnessFactor(75) < 1)
+  }
+
   function test_random_ring_point() {
     var p = Sprite.randomRingPoint(0, 0.77, 30, 100)
     verify(Math.abs(Math.hypot(p.x, p.y) - 30) < 1e-9, "inner " + Math.hypot(p.x, p.y))

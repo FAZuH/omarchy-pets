@@ -20,6 +20,7 @@ Item {
   property bool neutralBeat: false
   property bool walking: false
   property int facing: 1
+  property real randomness: 50
   property real pressX: 0
   property real pressY: 0
   property bool dragMoved: false
@@ -57,7 +58,11 @@ Item {
     frame = 0
     neutralBeat = false
     pose = "idle"
-    waitMs = Sprite.drawWaitMs(Math.random())
+    waitMs = Sprite.drawWaitMs(Math.random()) * Sprite.randomnessFactor(randomness)
+  }
+
+  function walkPose() {
+    return facing < 0 ? "runLeft" : "runRight"
   }
 
   function beginAction(name, loops) {
@@ -110,9 +115,10 @@ Item {
     var elapsed = clock.interval
     frame = (frame + 1) % durations.length
     if (walking) {
-      // Hold the running animation until the walker stops us; never idle.
-      if (pose !== "running") {
-        pose = "running"
+      // Hold the directional run animation until the walker stops us; never idle.
+      var want = walkPose()
+      if (pose !== want) {
+        pose = want
         frame = 0
       }
     } else if (pose !== "idle") {
@@ -129,14 +135,18 @@ Item {
     if (walking) {
       frame = 0
       neutralBeat = false
-      pose = "running"
+      pose = walkPose()
       if (ticking) arm()
     } else {
       facing = 1
       beginIdle()
       if (ticking) arm()
     }
-  }  onRunningChanged: {
+  }
+
+  onFacingChanged: if (walking && pose !== walkPose()) pose = walkPose()
+
+  onRunningChanged: {
     console.log("omarchy-pets: animation " + (running ? "started" : "stopped"))
     if (running) beginIdle()
     else {
@@ -168,10 +178,6 @@ Item {
     height: sourceSize.height * root.cellScale
     x: -root.cell.frame * root.cellW
     y: -root.cell.row * root.cellH
-    transform: Scale {
-      xScale: root.facing
-      origin.x: (root.cell.frame + 0.5) * root.cellW
-    }
     smooth: root.smoothScaling
     asynchronous: true
     onStatusChanged: {

@@ -39,9 +39,9 @@ The bar shows the current pet's first frame; with no pets it shows a paw.
   clickable. Drag the pinned pet to put it anywhere on the screen; the spot is
   remembered. Click the bar icon to unpin.
 - Give the pinned pet a walk radius in the panel and it strolls to random
-  spots within that distance of its spot, running pose on, facing the way it
-  walks. It rests a few seconds between strolls, and hovering it pauses the
-  walk so it can look at your cursor.
+  spots within that distance of its spot, playing its run-left or run-right
+  animation to match the way it walks. It rests a few seconds between strolls,
+  and hovering it pauses the walk so it can look at your cursor.
 
 ## Settings
 
@@ -61,11 +61,12 @@ omarchy bar set raiden-meixelysia.omarchy-pets smooth false --json
 | `pinnedX` | int | `-1` | Left edge of the pinned pet in screen pixels; `-1` is below the bar icon. Dragging sets it |
 | `pinnedY` | int | `-1` | Top edge of the pinned pet; same rules |
 | `pinnedScale` | number | `1` | Scale of the pet while pinned (0.5–3); bar icon and panel preview stay full size |
-| `randomBehavior` | bool | `true` | Play a random move every 8–20 s |
+| `randomBehavior` | bool | `true` | Play a random move on a timer (8–20 s at the default randomness) |
 | `animate` | bool | `true` | Off shows one still frame and runs no timer |
 | `walk` | bool | `false` | Stroll on/off; switching it on with radius 0 sets a 150 px radius |
 | `walkRadius` | int | `0` | Pixels the pinned pet strolls around its spot; `0` keeps it in place |
 | `walkMin` | int | `0` | Shortest distance of one stroll; never above `walkRadius` |
+| `randomness` | int | `50` | How often random moves and strolls fire (0–100); `50` is the natural pace |
 
 ## What it touches
 
@@ -87,9 +88,9 @@ omarchy bar set raiden-meixelysia.omarchy-pets smooth false --json
 omarchy plugin remove raiden-meixelysia.omarchy-pets
 ```
 
-This deletes the plugin folder after taking a backup. The widget's settings
-line in `~/.config/omarchy/shell.json` stays behind; delete it if you want a
-clean file. `~/.codex/pets/` is untouched.
+This deletes the plugin folder after taking a backup, and it also strips the
+widget's settings from `~/.config/omarchy/shell.json`, so pick your pet, spot
+and size again after a reinstall. `~/.codex/pets/` is untouched.
 
 ## Develop
 

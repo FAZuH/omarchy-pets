@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "raiden-meixelysia.omarchy-pets",
   "name": "Omarchy Pets",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "Raiden-MeixElysia",
   "license": "MIT",
   "description": "An animated Codex Pets companion in the bar: it plays its own moves on a random schedule, looks at your cursor, can be pinned to the desktop, and strolls around where you drop it.",
@@ -28,7 +28,8 @@
       "animate": true,
       "walk": false,
       "walkRadius": 0,
-      "walkMin": 0
+      "walkMin": 0,
+      "randomness": 50
     },
     "schema": [
       {
@@ -129,6 +130,16 @@
         "max": 500,
         "step": 25,
         "defaultValue": 0
+      },
+      {
+        "key": "randomness",
+        "type": "integer",
+        "label": "Randomness",
+        "description": "How often the pet moves on its own, idle actions and strolls alike. 50 is the natural pace, 0 half as often, 100 five times as often.",
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "defaultValue": 50
       }
     ]
   }
