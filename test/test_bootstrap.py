@@ -5,6 +5,7 @@ import http.server
 import io
 import json
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -13,7 +14,6 @@ import unittest
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT = os.path.join(ROOT, "bootstrap.py")
 
 
 def chunk(fourcc, data):
@@ -69,14 +69,23 @@ class BootstrapTests(unittest.TestCase):
         self.cli = os.path.join(self.home.name, ".local", "bin", "omarchy-pets")
         self.pets = os.path.join(self.home.name, ".omarchy-pets", "pets")
         self.marker = os.path.join(self.home.name, ".omarchy-pets", "bootstrap.done")
+        # The origin is fixed in the code, so the test points a copy of the
+        # plugin at its own server instead of moving it with an env var.
+        self.plugin = os.path.join(self.home.name, "plugin")
+        shutil.copytree(ROOT, self.plugin, ignore=shutil.ignore_patterns(".git", "__pycache__", "node_modules"))
+        api = os.path.join(self.plugin, "cli", "omarchy_pets", "api.py")
+        with open(api) as handle:
+            source = handle.read()
+        with open(api, "w") as handle:
+            handle.write(source.replace('DEFAULT_BASE = "https://omarchy-pets.com"', f'DEFAULT_BASE = "http://127.0.0.1:{self.httpd.server_port}"'))
 
     def tearDown(self):
         self.httpd.shutdown()
         self.home.cleanup()
 
     def run_script(self):
-        env = {"HOME": self.home.name, "PATH": os.environ.get("PATH", "/usr/bin:/bin"), "OMARCHY_PETS_API_BASE": f"http://127.0.0.1:{self.httpd.server_port}"}
-        return subprocess.run(["python3", SCRIPT], env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=120)
+        env = {"HOME": self.home.name, "PATH": os.environ.get("PATH", "/usr/bin:/bin")}
+        return subprocess.run(["python3", os.path.join(self.plugin, "bootstrap.py")], env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=120)
 
     def test_first_load_writes_the_command_line_and_the_default_pet_then_stops(self):
         done = self.run_script()
@@ -93,7 +102,7 @@ class BootstrapTests(unittest.TestCase):
         again = self.run_script()
         self.assertEqual(again.returncode, 0)
         self.assertEqual(again.stderr, "")
-        self.assertFalse(os.path.exists(os.path.join(ROOT, "cli", "omarchy_pets", "__pycache__")), "bytecode written under the plugin folder")
+        self.assertFalse(os.path.exists(os.path.join(self.plugin, "cli", "omarchy_pets", "__pycache__")), "bytecode written under the plugin folder")
         self.assertTrue(os.path.exists(os.path.join(self.home.name, ".omarchy-pets", "bootstrap.lock")))
 
     def test_a_second_bootstrap_waits_for_the_first_and_then_reports_its_work(self):

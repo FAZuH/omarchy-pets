@@ -57,7 +57,8 @@ def pick(data, *keys, kind=None):
 
 
 def api_base():
-    return os.environ.get("OMARCHY_PETS_API_BASE", DEFAULT_BASE).rstrip("/")
+    """The origin is fixed: a stray environment variable must not send the pets and the token elsewhere."""
+    return DEFAULT_BASE
 
 
 def config_dir():
@@ -87,7 +88,7 @@ def bound_credentials():
     credentials = read_credentials()
     if credentials and credentials["api_base"].rstrip("/") != api_base():
         raise CredentialsError(
-            f"signed in to {credentials['api_base']}, not {api_base()}; set OMARCHY_PETS_API_BASE={credentials['api_base']} or sign out there first"
+            f"signed in to {credentials['api_base']}, not {api_base()}; sign out there first"
         )
     return credentials
 
