@@ -228,17 +228,6 @@ Panel {
         }
       }
     }
-
-    PanelActionButton {
-      visible: root.opened
-      anchors.top: parent.top
-      anchors.right: parent.right
-      iconText: "\uf0403"
-      tooltipText: root.pinned ? "Keep the pet in the panel" : "Pin to the desktop"
-      foreground: root.barForeground
-      fontFamily: root.fontFamily
-      onClicked: root.saveSetting("pinned", !root.pinned)
-    }
   }
 
   PanelWindow {
