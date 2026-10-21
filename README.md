@@ -1,8 +1,8 @@
 # Omarchy Pets
 
 A desktop pet for the [Omarchy](https://omarchy.org) bar. It plays
-[Codex Pets](https://codex-pets.net) sprite sheets straight from
-`~/.codex/pets/`, moves on its own every 8–20 seconds, turns its head toward
+[Codex Pets](https://codex-pets.net) sprite sheets from
+`~/.omarchy-pets/pets/`, moves on its own every 8–20 seconds, turns its head toward
 your pointer, waves when clicked, and can be pinned to the desktop and dragged
 anywhere on the screen.
 
@@ -14,17 +14,27 @@ anywhere on the screen.
 - `python3`, which every Omarchy install already has (the base packages
   `uwsm`, `ufw` and `udiskie` depend on it). It checks each pet's `pet.json`
   and sprite sheet when the panel opens.
-- At least one pet from <https://codex-pets.net>, unzipped into
-  `~/.codex/pets/<id>/` (the same place Codex itself reads). Pets are not
-  part of this repository.
+- Pets live in `~/.omarchy-pets/pets/<id>/`. The plugin bundles the
+  `omarchy-pets` command line (`cli/`, the same source as
+  <https://omarchy-pets.com/cli>) and, on its first load with no pets, puts
+  it at `~/.local/bin/omarchy-pets` and installs the pet `guga` from
+  omarchy-pets.com. `omarchy-pets install <id>` adds more; the command's
+  first run in a terminal offers to copy the pets of `~/.codex/pets/` over
+  without touching them.
 
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/ZacharyZhang-NY/omarchy-pets.git --enable
+omarchy plugin add https://github.com/FAZuH/omarchy-pets.git --enable
 ```
 
-The bar shows the current pet's first frame; with no pets it shows a paw.
+On the first load the plugin installs the command line and `guga` (see
+"What it touches"), and the pet appears on the desktop. The bar shows the
+current pet's first frame; with no pets it shows a paw.
+
+After `omarchy plugin update`, run `omarchy restart shell`. The shell's plugin
+reload keeps the code it compiled at start, so a new version runs only after
+a restart.
 
 ## Use
 
@@ -32,12 +42,16 @@ The bar shows the current pet's first frame; with no pets it shows a paw.
   three installed pets, and the settings. Escape or a click outside closes it.
 - Click a pet in the list to switch. The choice survives shell restarts. With
   more than three pets, "View all" opens the full list; "Back" returns.
+- "Open omarchy-pets.com" opens the pet library in your browser; every pet
+  there shows its `omarchy-pets install <id>` command.
 - Hover the pet and it looks at the pointer (v2 sheets only); click it and it
   waves.
-- The pin button (top-right of the pet) keeps the pet on the desktop with the
-  panel closed. It never takes keyboard focus and only the pet itself is
-  clickable. Drag the pinned pet to put it anywhere on the screen; the spot is
-  remembered. Click the bar icon to unpin.
+- "Show on desktop" (on by default) keeps the pet on the desktop while the
+  panel is closed; opening the panel brings it into the panel and closing the
+  panel puts it back. It never takes keyboard focus and only the pet itself is
+  clickable. Drag the pet on the desktop to put it anywhere on the screen; the
+  spot is remembered. The pin button on the pet does the same as the toggle,
+  and the pet's size on the desktop is set by "Pinned size".
 - Give the pinned pet a walk radius in the panel and it strolls to random
   spots within that distance of its spot, playing its run-left or run-right
   animation to match the way it walks. It rests a few seconds between strolls,
@@ -55,13 +69,13 @@ omarchy bar set raiden-meixelysia.omarchy-pets smooth false --json
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `petId` | string | `""` | Directory name of the current pet; empty means the first one |
-| `petsDir` | string | `~/.codex/pets` | Where pets are read from |
+| `petsDir` | string | `~/.omarchy-pets/pets` | Where pets are read from |
 | `smooth` | bool | `true` | Bilinear scaling; turn off for pixel-art pets |
-| `pinned` | bool | `false` | Keep the pet on the desktop |
-| `pinnedX` | int | `-1` | Left edge of the pinned pet in screen pixels; `-1` is below the bar icon. Dragging sets it |
-| `pinnedY` | int | `-1` | Top edge of the pinned pet; same rules |
+| `pinned` | bool | `true` | Show the pet on the desktop while the panel is closed |
+| `pinnedX` | int | `-1` | Left edge of the pet on the desktop in screen pixels; `-1` is below the bar icon. Dragging sets it |
+| `pinnedY` | int | `-1` | Top edge of the pet on the desktop; same rules |
 | `pinnedScale` | number | `1` | Scale of the pet while pinned (0.5–3); bar icon and panel preview stay full size |
-| `randomBehavior` | bool | `true` | Play a random move on a timer (8–20 s at the default randomness) |
+| `randomBehavior` | bool | `true` | Play a random move every 8–20 s |
 | `animate` | bool | `true` | Off shows one still frame and runs no timer |
 | `walk` | bool | `false` | Stroll on/off; switching it on with radius 0 sets a 150 px radius |
 | `walkRadius` | int | `0` | Pixels the pinned pet strolls around its spot; `0` keeps it in place |
@@ -70,17 +84,36 @@ omarchy bar set raiden-meixelysia.omarchy-pets smooth false --json
 
 ## What it touches
 
-- Reads `~/.codex/pets/` (or the `petsDir` override) each time the panel
-  opens. It never creates, renames or deletes anything there.
+- Reads `~/.omarchy-pets/pets/` (or the `petsDir` override) each time the
+  panel opens. It never creates, renames or deletes anything there itself.
+- Once, when a scan finds no pet and `~/.omarchy-pets/bootstrap.done` is
+  absent, runs `bootstrap.py` under `timeout`: it writes
+  `~/.local/bin/omarchy-pets` from the bundled `cli/` source (only if that
+  path is empty; an existing file is never replaced), runs the bundled
+  command line to download `guga` from <https://omarchy-pets.com> into
+  `~/.omarchy-pets/pets/guga/`, and writes the marker so it never runs
+  again. Delete the marker to repeat it. That download is the plugin's one
+  network request, and it happens only then. `~/.omarchy-pets/bootstrap.lock`
+  is the file the running bootstrap holds an OS lock on (a second one waits
+  for the first); the bundled command line runs without writing bytecode,
+  so nothing changes inside the plugin folder.
 - Runs `scan.py` under `timeout` once per scan. It opens each `pet.json` and
-  sprite sheet without following symlinks, insists on regular files (64 KiB
-  and 32 MiB caps), reads only the WebP or PNG header for the size (1536
-  wide, 9 to 32 rows of 208, PNG at most 8 bits per channel), looks at no more than 500 entries and is
-  killed after 10 seconds. No image is decoded outside the shell's own
+  sprite sheet without following symlinks anywhere below the pets folder,
+  insists on regular files (64 KiB and 6 MiB caps), reads the sheet through
+  that descriptor, checks the WebP or PNG header (1536 wide, 9 to 32 rows of
+  208, PNG at most 8 bits per channel), looks at no more than 500 entries and
+  is killed after 10 seconds. No image is decoded outside the shell's own
   bounded `Image`. No network access, no installer, nothing run as root.
-- Writes only its own settings (the keys above) into the bar layout in
-  `~/.config/omarchy/shell.json`, through the shell's plugin registry, which
-  is the same path `omarchy bar set` uses.
+- Hands the bar the bytes of each sheet that passed those checks, inline in
+  the scan result; the bar decodes exactly those bytes and opens no file
+  itself. A sheet may be at most 6 MiB and one scan carries at most 24 MiB
+  of sheets (about ten pets); the rest are skipped with a reason in the
+  journal. Scans happen when the panel opens. No sheet data is written
+  anywhere.
+- Writes only its own settings (the keys above) into its own entry in the bar
+  layout in `~/.config/omarchy/shell.json`, through the settings call the
+  shell gives every third-party plugin (`updateEntryInline`, scoped to this
+  plugin's id).
 
 ## Remove
 
@@ -88,9 +121,9 @@ omarchy bar set raiden-meixelysia.omarchy-pets smooth false --json
 omarchy plugin remove raiden-meixelysia.omarchy-pets
 ```
 
-This deletes the plugin folder after taking a backup, and it also strips the
-widget's settings from `~/.config/omarchy/shell.json`, so pick your pet, spot
-and size again after a reinstall. `~/.codex/pets/` is untouched.
+This deletes the plugin folder after taking a backup. The widget's settings
+line in `~/.config/omarchy/shell.json` stays behind; delete it if you want a
+clean file. `~/.omarchy-pets/pets/` is untouched.
 
 ## Develop
 
@@ -98,7 +131,7 @@ and size again after a reinstall. `~/.codex/pets/` is untouched.
 omarchy plugin validate .
 /usr/lib/qt6/bin/qmllint -I "$OMARCHY_PATH/shell" *.qml
 /usr/lib/qt6/bin/qmltestrunner -input test
-python3 -m unittest discover -s test -p 'test_scan.py'
+python3 -m unittest discover -s test -p 'test_*.py'
 ```
 
 The plugin runs inside `omarchy-shell`; after changing files under

@@ -17,14 +17,17 @@ Panel {
 
   readonly property string home: Quickshell.env("HOME")
   readonly property string petsDir: {
-    var raw = String(root.setting("petsDir", "~/.codex/pets"))
+    var raw = String(root.setting("petsDir", "~/.omarchy-pets/pets"))
     return raw === "~" || raw.indexOf("~/") === 0 ? home + raw.slice(1) : raw
   }
+  readonly property var settingKeys: ["petId", "petsDir", "smooth", "pinned", "pinnedX", "pinnedY", "pinnedScale", "randomBehavior", "animate", "walk", "walkRadius", "walkMin", "randomness"]
   readonly property string petId: String(root.setting("petId", ""))
   readonly property bool smoothScaling: root.setting("smooth", true) === true
   readonly property bool animate: root.setting("animate", true) === true
   readonly property bool randomBehavior: root.setting("randomBehavior", true) === true
-  readonly property bool pinned: root.setting("pinned", false) === true
+  readonly property bool pinned: root.setting("pinned", true) === true
+  // The pet lives on the desktop while the panel is closed; an open panel shows it inside.
+  readonly property bool onDesktop: pinned && !opened
   readonly property int pinnedX: root.setting("pinnedX", -1)
   readonly property int pinnedY: root.setting("pinnedY", -1)
   readonly property real pinnedScale: {
@@ -72,56 +75,48 @@ Panel {
     if (opened) library.rescan()
     else showAll = false
   }
-  onPinnedChanged: {
-    if (pinned) root.controller.hide()
-    else {
-      walkMoving = false
-      walkDx = 0
-      walkDy = 0
-    }
-  }
-  onWalkChanged: if (!walk) {
+  onPinnedChanged: if (!pinned) stopWalk()
+  onOnDesktopChanged: if (!onDesktop) stopWalk()
+  onWalkChanged: if (!walk) stopWalk()
+
+  function stopWalk() {
     walkMoving = false
     walkDx = 0
     walkDy = 0
   }
 
   function open() {
-    if (pinned) saveSetting("pinned", false)
     root.controller.show()
   }
 
   function toggle() {
-    if (pinned || !opened) open()
+    if (!opened) open()
     else close()
   }
 
   function dragPet(dx, dy) {
-    if (!pinned) return
+    if (!onDesktop) return
     dragDx = petX + dx - restX
     dragDy = petY + dy - restY
   }
 
   function dropPet() {
-    if (!pinned) return
+    if (!onDesktop) return
     var x = petX
     var y = petY
     dragDx = 0
     dragDy = 0
-    walkMoving = false
-    walkDx = 0
-    walkDy = 0
+    stopWalk()
     walkDwell = Sprite.walkDwellMs(Math.random()) * Sprite.randomnessFactor(root.randomness)
-    saveSetting("pinnedX", x)
-    saveSetting("pinnedY", y)
+    saveSettings({ pinnedX: x, pinnedY: y })
   }
 
   function currentSettings() {
     return {
       petId: String(root.setting("petId", "")),
-      petsDir: String(root.setting("petsDir", "~/.codex/pets")),
+      petsDir: String(root.setting("petsDir", "~/.omarchy-pets/pets")),
       smooth: root.setting("smooth", true) === true,
-      pinned: root.setting("pinned", false) === true,
+      pinned: root.setting("pinned", true) === true,
       pinnedX: root.setting("pinnedX", -1),
       pinnedY: root.setting("pinnedY", -1),
       pinnedScale: root.pinnedScale,
@@ -134,28 +129,32 @@ Panel {
     }
   }
 
+  // The shell replaces the whole entry, not one key: send every known setting.
+  function saveSettings(values) {
+    var entry = { id: moduleName }
+    var current = currentSettings()
+    for (var i = 0; i < settingKeys.length; i++) entry[settingKeys[i]] = current[settingKeys[i]]
+    var changed = false
+    for (var name in values) {
+      if (!(name in entry)) continue
+      if (entry[name] === values[name]) continue
+      entry[name] = values[name]
+      changed = true
+    }
+    if (!changed) return
+    var shell = bar ? bar.shell : null
+    if (!shell || typeof shell.updateEntryInline !== "function") {
+      console.warn("omarchy-pets: cannot save " + JSON.stringify(values) + ": bar.shell.updateEntryInline unavailable")
+      return
+    }
+    if (shell.updateEntryInline(moduleName, entry)) console.log("omarchy-pets: saved " + JSON.stringify(values))
+    else console.warn("omarchy-pets: shell refused " + JSON.stringify(values))
+  }
+
   function saveSetting(key, value) {
-    var shellApi = bar && bar.shell ? bar.shell : null
-    if (shellApi && shellApi.pluginRegistry && typeof shellApi.pluginRegistry.setBarWidget === "function") {
-      var error = shellApi.pluginRegistry.setBarWidget(moduleName, key, value, {})
-      if (!error) {
-        console.log("omarchy-pets: " + key + " = " + JSON.stringify(value))
-        return
-      }
-      console.warn("omarchy-pets: saving " + key + " via registry failed: " + error)
-    }
-    // Bar widgets only get the scoped shell facade, which has no
-    // pluginRegistry. updateEntryInline is the supported write path here;
-    // it replaces the layout entry, so send the full merged settings.
-    if (shellApi && typeof shellApi.updateEntryInline === "function") {
-      var merged = currentSettings()
-      merged[key] = value
-      if (shellApi.updateEntryInline(moduleName, merged)) {
-        console.log("omarchy-pets: " + key + " = " + JSON.stringify(value))
-        return
-      }
-    }
-    console.warn("omarchy-pets: cannot save " + key + ": no writable shell API")
+    var values = {}
+    values[key] = value
+    saveSettings(values)
   }
 
   function switchPanel(direction) {
@@ -173,19 +172,20 @@ Panel {
   // Reparented between the card and the pinned window.
   Item {
     id: stage
-    parent: root.pinned ? pinnedSlot : panelSlot
-    x: root.pinned ? root.petX : 0
-    y: root.pinned ? root.petY : 0
-    width: root.pinned ? Math.round(192 * root.pinnedScale) : 192
-    height: root.pinned ? Math.round(208 * root.pinnedScale) : 208
+    parent: root.onDesktop ? pinnedSlot : panelSlot
+    x: root.onDesktop ? root.petX : 0
+    y: root.onDesktop ? root.petY : 0
+    width: root.onDesktop ? Math.round(192 * root.pinnedScale) : 192
+    height: root.onDesktop ? Math.round(208 * root.pinnedScale) : 208
 
     PetSprite {
       id: sprite
       anchors.fill: parent
       sheetUrl: root.currentPet ? root.currentPet.sheetUrl : ""
+      sheetLabel: root.currentPet ? root.currentPet.name : ""
       smoothScaling: root.smoothScaling
-      cellScale: root.pinned ? root.pinnedScale : 1
-      running: (root.opened || root.pinned) && root.animate && root.currentPet !== null
+      cellScale: root.onDesktop ? root.pinnedScale : 1
+      running: (root.opened || root.onDesktop) && root.animate && root.currentPet !== null
       randomBehavior: root.randomBehavior
       randomness: root.randomness
       walking: root.walk && root.walkMoving && root.walkRadius > 0 && !sprite.hovering && !root.dragging
@@ -197,7 +197,7 @@ Panel {
       id: walker
       interval: 33
       repeat: true
-      running: root.pinned && root.animate && root.walk && root.walkRadius > 0 && root.currentPet !== null
+      running: root.onDesktop && root.animate && root.walk && root.walkRadius > 0 && root.currentPet !== null
 
       onRunningChanged: {
         if (!running) return
@@ -230,20 +230,20 @@ Panel {
     }
 
     PanelActionButton {
-      visible: !root.pinned
+      visible: root.opened
       anchors.top: parent.top
       anchors.right: parent.right
-      iconText: "\u{f0403}"
-      tooltipText: "Pin to the desktop"
+      iconText: "\uf0403"
+      tooltipText: root.pinned ? "Keep the pet in the panel" : "Pin to the desktop"
       foreground: root.barForeground
       fontFamily: root.fontFamily
-      onClicked: root.saveSetting("pinned", true)
+      onClicked: root.saveSetting("pinned", !root.pinned)
     }
   }
 
   PanelWindow {
     id: pinnedWindow
-    visible: root.pinned && root.currentPet !== null
+    visible: root.onDesktop && root.currentPet !== null
     screen: panel.screen
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
@@ -256,11 +256,12 @@ Panel {
       right: true
       bottom: true
     }
+    // Whole window while engaged, so a fast drag cannot escape.
     mask: Region {
-      x: stage.x
-      y: stage.y
-      width: stage.width
-      height: stage.height
+      x: sprite.engaged ? 0 : stage.x
+      y: sprite.engaged ? 0 : stage.y
+      width: sprite.engaged ? pinnedWindow.width : stage.width
+      height: sprite.engaged ? pinnedWindow.height : stage.height
     }
 
     Item {
@@ -285,8 +286,9 @@ Panel {
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
+      // The card is capped at the screen; what does not fit scrolls.
       Flickable {
-        id: scroll
+        id: cardScroll
         anchors.fill: parent
         contentWidth: width
         contentHeight: content.implicitHeight
@@ -298,7 +300,7 @@ Panel {
 
         Column {
           id: content
-          width: parent.width
+          width: cardScroll.width
           spacing: Style.space(10)
 
         Item {
@@ -311,6 +313,7 @@ Panel {
 
         Text {
           width: parent.width
+          textFormat: Text.PlainText
           text: root.currentPet ? root.currentPet.displayName : "Pets"
           color: root.barForeground
           font.family: root.fontFamily
@@ -322,7 +325,8 @@ Panel {
         Text {
           visible: library.pets.length === 0
           width: parent.width
-          text: "No pets in " + root.petsDir + "\nDownload one from codex-pets.net and unzip it into " + root.petsDir + "/<id>/"
+          textFormat: Text.PlainText
+          text: "No pets in " + root.petsDir + "\nGet omarchy-pets from omarchy-pets.com/cli, then run omarchy-pets install <id>"
           color: Qt.darker(root.barForeground, 1.5)
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall
@@ -362,7 +366,7 @@ Panel {
             smoothScaling: root.smoothScaling
             fill: root.hoverFill
             currentFill: root.selectedFill
-            onClicked: root.saveSetting("petId", modelData.name)
+            onClicked: root.saveSettings({ petId: modelData.name })
           }
         }
 
@@ -375,6 +379,26 @@ Panel {
           foreground: root.barForeground
           fontFamily: root.fontFamily
           onClicked: root.showAll = true
+        }
+
+        Button {
+          width: parent.width
+          leftAlign: true
+          iconText: "\uf08e"
+          text: "Open omarchy-pets.com"
+          foreground: root.barForeground
+          fontFamily: root.fontFamily
+          onClicked: Quickshell.execDetached(["omarchy", "launch", "browser", "https://omarchy-pets.com"])
+        }
+
+        Toggle {
+          width: parent.width
+          label: "Show on desktop"
+          description: "Stays on the desktop when the panel closes; drag it anywhere"
+          checked: root.pinned
+          foreground: root.barForeground
+          fontFamily: root.fontFamily
+          onClicked: root.saveSetting("pinned", !root.pinned)
         }
 
         Toggle {
@@ -415,8 +439,9 @@ Panel {
           foreground: root.barForeground
           fontFamily: root.fontFamily
           onClicked: {
-            if (!root.walk && root.walkRadius === 0) root.saveSetting("walkRadius", 150)
-            root.saveSetting("walk", !root.walk)
+            var values = { walk: !root.walk }
+            if (values.walk && root.walkRadius === 0) values.walkRadius = 150
+            root.saveSettings(values)
           }
         }
 
